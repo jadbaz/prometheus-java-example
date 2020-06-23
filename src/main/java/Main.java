@@ -6,7 +6,11 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.io.IOException;
 
 public class Main {
-    private final static int PORT = 1234;
+    // choose a port number outside of Prometheus default port allocation and outside of known port ranges
+    // https://github.com/prometheus/prometheus/wiki/Default-port-allocations
+    // https://www.webopedia.com/quick_ref/portnumbers.asp
+    private final static int PORT = 20050;
+
     private static final String REQUEST_TYPE_PREFIX = "ws_type_";
 
     private static final Gauge lastRequestTime = Gauge.build()
@@ -15,20 +19,22 @@ public class Main {
             .labelNames("ws_type", "ws_method")
             .register();
 
-    //this covers a typical request duration from 0.005 to 10 seconds
+    // this covers a typical request duration from 0.005 to 10 seconds
     private static final Histogram requestDurationHistogram = Histogram.build()
             .name("request_duration")
             .help("Request duration")
+            //.buckets(0.1, 0.2, 0.5, 1, 5, 10) //you could also specify buckets manually
             .labelNames("ws_type", "ws_method")
             .register();
 
     private static void processRequest(String requestType, String requestMethod, int simulatedRequestDuration) throws InterruptedException {
-        final Histogram.Timer requestTimer = requestDurationHistogram.labels(requestType, requestMethod).startTimer();
+        final Histogram.Timer requestHistogramTimer = requestDurationHistogram.labels(requestType, requestMethod).startTimer();
         try {
+            // mock web service request
             Thread.sleep(simulatedRequestDuration);
         } finally {
             lastRequestTime.labels(requestType, requestMethod).setToCurrentTime();
-            requestTimer.observeDuration();
+            requestHistogramTimer.observeDuration();
         }
         System.out.printf("type=%s,method=%s,duration=%d\n", requestType, requestMethod, simulatedRequestDuration);
     }
