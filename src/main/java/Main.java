@@ -1,5 +1,6 @@
 import io.prometheus.client.Gauge;
 import io.prometheus.client.Histogram;
+import io.prometheus.client.Summary;
 import io.prometheus.client.exporter.HTTPServer;
 
 import java.util.concurrent.ThreadLocalRandom;
@@ -27,14 +28,26 @@ public class Main {
             .labelNames("ws_type", "ws_method")
             .register();
 
+    private static final Summary requestDurationSummary = Summary.build()
+            .name("request_duration_summary")
+            .maxAgeSeconds(300) //aggregate over a 5-minute window
+            .quantile(0.5,0)
+            .quantile(0.95,0)
+            .quantile(0.99,0)
+            .quantile(1,0) //this basically gives us the maximum
+            .help("Request duration summary")
+            .register();
+
     private static void processRequest(String requestType, String requestMethod, int simulatedRequestDuration) throws InterruptedException {
         final Histogram.Timer requestHistogramTimer = requestDurationHistogram.labels(requestType, requestMethod).startTimer();
+        final Summary.Timer requestSummaryTimer = requestDurationSummary.startTimer();
         try {
             // mock web service request
             Thread.sleep(simulatedRequestDuration);
         } finally {
             lastRequestTime.labels(requestType, requestMethod).setToCurrentTime();
             requestHistogramTimer.observeDuration();
+            requestSummaryTimer.observeDuration();
         }
         System.out.printf("type=%s,method=%s,duration=%d\n", requestType, requestMethod, simulatedRequestDuration);
     }
