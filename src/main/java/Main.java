@@ -11,6 +11,14 @@ public class Main {
     // https://www.webopedia.com/quick_ref/portnumbers.asp
     private final static int PORT = 20050;
 
+    private final static String VERSION = "1.0.0";
+
+    private static final Gauge appInfoGauge = Gauge.build()
+            .name("app_info")
+            .help("Application Info")
+            .labelNames("version")
+            .register();
+
     private static final String REQUEST_TYPE_PREFIX = "ws_type_";
 
     private static final Gauge lastRequestTime = Gauge.build()
@@ -42,6 +50,11 @@ public class Main {
     public static void main(String[] args) throws IOException, InterruptedException {
         // prometheus embedded simple http server
         new HTTPServer(PORT);
+        System.out.println("Started app on port " + PORT);
+
+        appInfoGauge
+                .labels(VERSION)
+                .set(1.0);
 
         while (true) {
             // suppose we have 3 requests
